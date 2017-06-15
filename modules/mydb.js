@@ -45,4 +45,4 @@ function MyDB() {
     };
 }).call(MyDB.prototype);
 
-module.exports = MyDB;
+module.exports = new MyDB();

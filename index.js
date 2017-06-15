@@ -1,8 +1,7 @@
 'use strict';
 const MySchema = require('./modules/schema.js');
-const MyDB = require('./modules/mydb.js');
+const db = require('./modules/mydb.js');
 
-var db = new MyDB();
 db.connect('mongodb://localhost:27017/mydb');
 
 var User = db.createSchema({firstname: 'string', lastname: 'string'});
@@ -27,3 +26,11 @@ book.isbn = '123-123-123-121';
 db.create(book);
 db.update(book);
 db.delete(book);
+
+var _promise = (a,b) => {
+    return new Promise(function(resolve,reject){ 
+                   setTimeout(function(){resolve(a+b);}, 1000);
+        })
+}
+
+_promise(2,2).then((result) => {console.log(`promise returned ${result}`)});
