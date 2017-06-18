@@ -8,7 +8,10 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceRoot}/web_spider/app.js"
+            "program": "${workspaceRoot}/web_spider/app.js",
+            "args": [
+                "http://www.vnexpress.net","1"
+            ]
         }
     ]
 }
