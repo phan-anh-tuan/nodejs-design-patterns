@@ -18,6 +18,12 @@
   },
   "homepage": "https://github.com/phan-anh-tuan/nodejs-design-patterns#readme",
   "dependencies": {
-    "nodemon": "^1.11.0"
+    "cheerio": "^1.0.0-rc.1",
+    "mkdirp": "^0.5.1",
+    "nodemon": "^1.11.0",
+    "path": "^0.12.7",
+    "request": "^2.81.0",
+    "slug": "^0.9.1",
+    "url": "^0.11.0"
   }
 }

@@ -16,15 +16,16 @@ class FindPattern extends EventEmitter {
     }
 
     find() {
-        var _self = this;
-        this.files.forEach(function(file) {
-                                Fs.readFile(file, 'utf-8', function(err,data) {
-                                        if (err) { return _self.emit('error', err, file);}
-                                        _self.emit('fileread', file);
+        //var _self = this;
+        this.files.forEach((file) => {
+                                Fs.readFile(file, 'utf-8', (err,data) => {
+                                        //console.log(this.regex);
+                                        if (err) { return this.emit('error', err, file);}
+                                        this.emit('fileread', file);
                                         let matches;
-                                        if (matches = data.match(_self.regex)){
-                                            matches.forEach(function(match) {
-                                                _self.emit('match',file,match);
+                                        if (matches = data.match(this.regex)){
+                                            matches.forEach((match) => {
+                                                this.emit('match',file,match);
                                             })
                                         }
                                 });
