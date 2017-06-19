@@ -64,6 +64,9 @@ function downloadFile(uri,filepath,callback) {
                     console.log(`downloaded ${uri}`);
                     callback(null);
                 });
+            } else {
+                console.log(`Unable to download file ${uri}`);
+                callback(new Error(`Unable to download file ${uri}`));
             }
         }); 
 }
@@ -108,13 +111,11 @@ function execute(uri,nesting,callback) {
     resolve(uri)
         .then((filepath) => {
                                 isFileExisted(filepath, (err,existed) => {
-                                    if (err) { console.log(err.message); process.exit(1);}
+                                    if (err) { return callback(err);}
                                     if (!existed) {
                                         
                                         downloadFile(uri,filepath,(err) => {
-                                            if (err) {
-                                                return callback(err);
-                                            }
+                                            if (err) { return callback(err); }
                                             spiderLink(uri,filepath,nesting,callback);
                                         })
                                     } else {
@@ -132,18 +133,22 @@ if (process.argv.length < 4) {
     process.exit(1);
 }
 
-const MAX_DOWNLOADER = 1;
+const MAX_DOWNLOADER = 2;
 let running = 0;
 let tasks = [];
+let processed_urls = new Map();
 
 function next() {
     while (running < MAX_DOWNLOADER && tasks.length > 0) {    
         let task = tasks.shift();
+        if (processed_urls.has(task.uri)) { return next(); }
         execute(task.uri, task.nesting, (err) => {
+                                                    if (err) { console.log(err);}
                                                     running--;
                                                     next();
                                                  });   
         running++;
+        processed_urls.set(task.uri,true);
         console.log(`running ${running} ${task.uri} ${task.nesting}`);
         next();
     }
