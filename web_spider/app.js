@@ -56,6 +56,8 @@ function isFileExisted(filepath,callback) {
 function downloadFile(uri,filepath,callback) {
     // callback = (err)
     // overwrite if filepath existed
+    if (processed_urls.has(uri)) { return process.nextTick(callback,new Error(`${uri} have been downloaded`)); }
+    processed_urls.set(uri,true);
     Request(uri, (error, response, body) => {
             if (error) { return callback(error); }
             if (response.statusCode == 200) {
@@ -141,14 +143,13 @@ let processed_urls = new Map();
 function next() {
     while (running < MAX_DOWNLOADER && tasks.length > 0) {    
         let task = tasks.shift();
-        if (processed_urls.has(task.uri)) { return next(); }
+        
         execute(task.uri, task.nesting, (err) => {
                                                     if (err) { console.log(err);}
                                                     running--;
                                                     next();
                                                  });   
         running++;
-        processed_urls.set(task.uri,true);
         console.log(`running ${running} ${task.uri} ${task.nesting}`);
         next();
     }
