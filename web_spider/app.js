@@ -56,14 +56,19 @@ function isFileExisted(filepath,callback) {
 function downloadFile(uri,filepath,callback) {
     // callback = (err)
     // overwrite if filepath existed
+    if (processed_urls.has(uri)) { return process.nextTick(callback,new Error(`${uri} have been downloaded`)); }
+    processed_urls.set(uri,true);
     Request(uri, (error, response, body) => {
             if (error) { return callback(error); }
             if (response.statusCode == 200) {
                 Fs.writeFile(filepath,body,(_err) => {
                     if (_err) { return callback(_err); }
-                    console.log(`downloading ${uri}`);
+                    console.log(`downloaded ${uri}`);
                     callback(null);
                 });
+            } else {
+                console.log(`Unable to download file ${uri}`);
+                callback(new Error(`Unable to download file ${uri}`));
             }
         }); 
 }
@@ -95,32 +100,24 @@ function spiderLink(uri,filepath,nesting,callback) {
     Fs.readFile(filepath, (err,body) => {
         getPageLinks(uri,body)
                             .then( (links) => {
-                                    function iterate(index) {
-                                        if (index === links.length) {
-                                            return process.nextTick(callback,null);
-                                        }
-                                        spider(links[index], nesting-1, (err) => { 
-                                                                                if (err) { return callback(err)}; 
-                                                                                iterate(index+1);
-                                                                            });
-                                    }
-                                    iterate(0);
+                                    links.forEach((link) => {
+                                        tasks.push({uri:link, nesting: nesting-1});
+                                    }) ;
+                                    return callback(null);
                             })
                             .catch((err) => callback(err));
     })
 }
 
-function spider(uri,nesting,callback) {
+function execute(uri,nesting,callback) {
     resolve(uri)
         .then((filepath) => {
                                 isFileExisted(filepath, (err,existed) => {
-                                    if (err) { console.log(err.message); process.exit(1);}
+                                    if (err) { return callback(err);}
                                     if (!existed) {
                                         
                                         downloadFile(uri,filepath,(err) => {
-                                            if (err) {
-                                                return callback(err);
-                                            }
+                                            if (err) { return callback(err); }
                                             spiderLink(uri,filepath,nesting,callback);
                                         })
                                     } else {
@@ -138,9 +135,25 @@ if (process.argv.length < 4) {
     process.exit(1);
 }
 
-spider(process.argv[2],process.argv[3],(err) => {
-                                    if (err) {
-                                        console.log(err.message); 
-                                        process.exit(1);
-                                    }
-                                });
+const MAX_DOWNLOADER = 2;
+let running = 0;
+let tasks = [];
+let processed_urls = new Map();
+
+function next() {
+    while (running < MAX_DOWNLOADER && tasks.length > 0) {    
+        let task = tasks.shift();
+        
+        execute(task.uri, task.nesting, (err) => {
+                                                    if (err) { console.log(err);}
+                                                    running--;
+                                                    next();
+                                                 });   
+        running++;
+        console.log(`running ${running} ${task.uri} ${task.nesting}`);
+        next();
+    }
+}    
+tasks.push({ uri: process.argv[2],
+            nesting: process.argv[3]});
+next();
