@@ -9,6 +9,7 @@ const Slug = require('slug');
 const Fs = require('fs');
 const Path = require('path');
 const Cheerio = require('cheerio');
+const Async = require('async');
 const BASE_FOLDER = Path.join(__dirname,'./files/');
 
 
@@ -56,21 +57,27 @@ function isFileExisted(filepath,callback) {
 function downloadFile(uri,filepath,callback) {
     // callback = (err)
     // overwrite if filepath existed
-    if (processed_urls.has(uri)) { return process.nextTick(callback,new Error(`${uri} have been downloaded`)); }
+    if (processed_urls.has(uri)) { return process.nextTick(callback,null,false); }
     processed_urls.set(uri,true);
-    Request(uri, (error, response, body) => {
-            if (error) { return callback(error); }
-            if (response.statusCode == 200) {
-                Fs.writeFile(filepath,body,(_err) => {
-                    if (_err) { return callback(_err); }
-                    console.log(`downloaded ${uri}`);
-                    callback(null);
-                });
-            } else {
-                console.log(`Unable to download file ${uri}`);
-                callback(new Error(`Unable to download file ${uri}`));
-            }
-        }); 
+    
+    Async.waterfall([
+        (cb) => {
+            Request(uri, (error, response, body) => {
+                if (error) { return cb(error);}
+                cb(null,body);
+            });
+        },
+        (content,cb) => {
+            Fs.writeFile(filepath,content,(_err) => {
+                if (_err) { return cb(_err);}
+                cb(null);
+            })
+        }
+       ], (err) => {
+            if (err) { return callback(err);}
+            console.log(`downloaded ${uri}`);
+            callback(null,true);
+       });
 }
 
 function getPageLinks(currentUrl,content) {
@@ -100,25 +107,33 @@ function spiderLink(uri,filepath,nesting,callback) {
     Fs.readFile(filepath, (err,body) => {
         getPageLinks(uri,body)
                             .then( (links) => {
-                                    links.forEach((link) => {
-                                        tasks.push({uri:link, nesting: nesting-1});
-                                    }) ;
-                                    return callback(null);
+                                    Async.eachSeries(links, 
+                                                     (link,cb)=>{
+                                                                    downloadQueue.push({uri:link, nesting: nesting-1}, (err) => {});
+                                                                    cb();
+                                                                },
+                                                     callback);
                             })
                             .catch((err) => callback(err));
     })
 }
 
-function execute(uri,nesting,callback) {
+function execute(task,callback) {
+    let uri = task.uri;
+    let nesting = task.nesting;
     resolve(uri)
         .then((filepath) => {
                                 isFileExisted(filepath, (err,existed) => {
                                     if (err) { return callback(err);}
                                     if (!existed) {
                                         
-                                        downloadFile(uri,filepath,(err) => {
+                                        downloadFile(uri,filepath,(err,downloaded) => {
                                             if (err) { return callback(err); }
-                                            spiderLink(uri,filepath,nesting,callback);
+                                            if (downloaded) {
+                                                spiderLink(uri,filepath,nesting,callback);
+                                            } else { // file was downloaded previously
+                                                callback(null);
+                                            }
                                         })
                                     } else {
                                         spiderLink(uri,filepath,nesting,callback);
@@ -135,25 +150,9 @@ if (process.argv.length < 4) {
     process.exit(1);
 }
 
-const MAX_DOWNLOADER = 2;
+const MAX_DOWNLOADER = 10;
 let running = 0;
-let tasks = [];
+const downloadQueue = Async.queue(execute,MAX_DOWNLOADER);
 let processed_urls = new Map();
 
-function next() {
-    while (running < MAX_DOWNLOADER && tasks.length > 0) {    
-        let task = tasks.shift();
-        
-        execute(task.uri, task.nesting, (err) => {
-                                                    if (err) { console.log(err);}
-                                                    running--;
-                                                    next();
-                                                 });   
-        running++;
-        console.log(`running ${running} ${task.uri} ${task.nesting}`);
-        next();
-    }
-}    
-tasks.push({ uri: process.argv[2],
-            nesting: process.argv[3]});
-next();
+downloadQueue.push({ uri: process.argv[2], nesting: process.argv[3]}, (err) => {});

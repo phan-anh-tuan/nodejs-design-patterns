@@ -10,7 +10,7 @@
             "name": "Launch Program",
             "program": "${workspaceRoot}/web_spider/app.js",
             "args": [
-                "http://www.smh.com.au/","2"
+                "http://www.smh.com.au/","1"
             ]
         }
     ]
