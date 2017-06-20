@@ -7,6 +7,8 @@ const UrlParse = Url.parse;
 const UrlResolve = Url.resolve;
 const Slug = require('slug');
 const Fs = require('fs');
+const Utility = require('./utilities.js');
+const FsReadFile = Utility.promisify(Fs.readFile);
 const Path = require('path');
 const Cheerio = require('cheerio');
 const Async = require('async');
@@ -104,6 +106,19 @@ function getPageLinks(currentUrl,content) {
 }
 function spiderLink(uri,filepath,nesting,callback) {
     if (nesting == 0) { return process.nextTick(callback,null); }
+    
+    FsReadFile(filepath)
+        .then((body) => { return getPageLinks(uri,body);})
+        .then((links) => {
+                            Async.eachSeries(links, 
+                                             (link,cb)=>{
+                                                          downloadQueue.push({uri:link, nesting: nesting-1}, (err) => {});
+                                                          cb();
+                                                        },
+                                             callback);
+                            })
+        .catch((err) => callback(err));
+    /*
     Fs.readFile(filepath, (err,body) => {
         getPageLinks(uri,body)
                             .then( (links) => {
@@ -115,7 +130,7 @@ function spiderLink(uri,filepath,nesting,callback) {
                                                      callback);
                             })
                             .catch((err) => callback(err));
-    })
+    })*/
 }
 
 function execute(task,callback) {
