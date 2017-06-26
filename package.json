@@ -18,11 +18,8 @@
   },
   "homepage": "https://github.com/phan-anh-tuan/nodejs-design-patterns#readme",
   "dependencies": {
-<<<<<<< HEAD
     "chance": "^1.0.10",
-=======
     "async": "^2.4.1",
->>>>>>> 94a80187ee832718946092f75b3f9cdae582ec5b
     "cheerio": "^1.0.0-rc.1",
     "mkdirp": "^0.5.1",
     "nodemon": "^1.11.0",
